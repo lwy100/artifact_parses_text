@@ -219,3 +219,7 @@ __marimo__/
 
 artifact_validation_data/*
 !artifact_validation_data/example
+
+checks/*
+!checks/example
+

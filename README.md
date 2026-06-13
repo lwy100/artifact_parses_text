@@ -1,12 +1,25 @@
 # artifact_parses_text
 
-把文件类型的产物（xlsx / docx / pdf / pptx / html / md）解析成文本，并可选地用「校验脚本」检查解析后的文本是否符合预期，主要用于把固定类型的rubric改造成检测脚本。
+把任意文件类型的产物（xlsx / docx / pdf / pptx / html / md）解析成一份 `.md` 文本，再用一组 Python「校验脚本」对这份文本（或文件名）跑规则检查，输出可读的终端结果 + 一份带时间戳的 JSON 报告。
+
+主要用途：把那些**可以靠文本判定**的 rubric（关键词是否出现、是否禁用某种格式、数值是否在区间内……）从人工评分里搬出来，写成稳定可重跑的脚本。
+
+整体流程：
+
+```
+附件 → parser 抽文本 → check_*.py 跑规则 → stdout 汇总 + JSON 报告
+```
 
 ## 安装
 
 ```bash
-uv pip install -e .
-# 或
+git clone https://github.com/lwy100/artifact_parses_text.git
+cd artifact_parses_text
+
+# 推荐用 uv（最简洁）
+uv sync
+
+# 或 pip
 pip install -e .
 ```
 
@@ -52,40 +65,28 @@ python3 parse_and_check.py --file foo.docx --script checks/example
 
 ## 哪些 rubric 适合做成脚本？
 
-这套工具的核心限制是：**只能看到 parse 出的文本和文件名**，看不到版式、颜色、线型、位置、嵌套关系这些视觉信号。所以一条 rubric 适不适合改写成脚本，本质上是看它能不能用「文本/文件名能否唯一判定」这把尺子量出来。
+一句话判断：**这条 rubric 的判定，能不能在解析后的纯文本（或文件名）里逐字对上？** 能就适合脚本化，不能就留给人或视觉模型。
 
-### 适合（但不限于）改写成脚本的 rubric 模式
+常见可脚本化的 rubric 形态（每种都有现成模板可抄）：
 
-| 模式 | 典型 rubric 提法 | 模板 |
-| --- | --- | --- |
-| 文件名 / 格式硬约束 | "产物不是 Excel"、"产物必须是 .pptx"、"不要给我 Markdown 代码" | [`checks/example/check_extension_policy.py`](checks/example/check_extension_policy.py) |
-| 必备要素清单（all-of） | "三档落点：基础看护/标准安防/全面守护"、"三层架构：感知层/网络层/应用层"、"路径起点四要素：年龄/独居/户型/预算" | [`checks/example/check_all_keywords_present.py`](checks/example/check_all_keywords_present.py) |
-| 同义/同类近义（any-of） | "至少有一处『结论 / 结语 / 总结』"、"出现 5G / 6G / 移动通信 任一即可" | [`checks/example/check_any_keyword_present.py`](checks/example/check_any_keyword_present.py) |
-| 禁词 / 反向约束 | "不能写具体型号"、"不能出现 TBD/TODO/待定"、"不要 Mermaid/Markdown 代码块" | [`checks/example/check_forbidden_keywords.py`](checks/example/check_forbidden_keywords.py) |
-| 数量阈值 | "至少四类风险"、"≥ 3 个章节标题"、"关键词出现 ≥ N 次" | [`checks/example/check_min_count.py`](checks/example/check_min_count.py) |
-| 数值范围 / 异常值 | "价格在 [200, 5000]"、"年龄 [0, 120]"、"先剔除负值再画图" | [`checks/example/check_number_range.py`](checks/example/check_number_range.py) |
-| 文本结构信号 | "决策树主路径包含『卧室+卫生间各 1 个雷达，床头+卫生间各 1 个按钮』"、"案例卡含『朝阳/78/60/2800/3秒/15分钟』六要素" | 把 all-of 模板里的关键词换成这一组即可 |
+| 形态 | 模板 |
+| --- | --- |
+| 文件名 / 格式约束 | [`checks/example/check_extension_policy.py`](checks/example/check_extension_policy.py) |
+| 一组关键词必须全部出现 | [`checks/example/check_all_keywords_present.py`](checks/example/check_all_keywords_present.py) |
+| 一组关键词出现任一即可 | [`checks/example/check_any_keyword_present.py`](checks/example/check_any_keyword_present.py) |
+| 禁词 / 反向约束 | [`checks/example/check_forbidden_keywords.py`](checks/example/check_forbidden_keywords.py) |
+| 数量阈值（≥ N 个标题、关键词出现 ≥ N 次等） | [`checks/example/check_min_count.py`](checks/example/check_min_count.py) |
+| 数值范围 / 异常值 | [`checks/example/check_number_range.py`](checks/example/check_number_range.py) |
 
-工程信号：rubric 的『1分情况』里写的判定条件**全部能在解析后的纯文本里找到对应的字符串**，且不依赖『出现在哪个分区/什么颜色/线型如何』这种视觉位置——就改成脚本。
+涉及视觉信号的 rubric 不适合脚本化——版式、颜色、线型、坐标位置、嵌套关系、视觉感受、主观打分，这些 parse 后看不到，**别强行写**。如果 rubric 数据里 `visual_depend: 是`，基本就是这种。
 
-> 一个真实的端到端示例放在 [`checks/rubric_baoyu_diagram_7641/`](checks/rubric_baoyu_diagram_7641/)：从一条海报类 task 的 rubric 里挑出 10 条改写成 check_*.py，能直接 `python3 parse_and_check.py --file <候选海报> --script checks/rubric_baoyu_diagram_7641` 一次性跑完。
+> 端到端示例：[`checks/rubric_baoyu_diagram_7641/`](checks/rubric_baoyu_diagram_7641/) 从一条海报类 task 的 rubric 里挑了 10 条改写成 check_*.py，可直接 `python3 parse_and_check.py --file <候选海报> --script checks/rubric_baoyu_diagram_7641` 一次性跑完。
 
-### 不要尝试改写成脚本的 rubric 模式
-
-这些只能靠人 / 视觉模型去看，强行写脚本要么误判要么自欺欺人：
-
-- **位置 / 分区**："放在海报左侧"、"在底部"、"右侧设侧栏" —— parse 后只剩文本流，没有 2D 坐标。
-- **图形元素**："包含判断菱形 / 步骤矩形 / 旁注气泡 / 案例卡"、"用实线 / 虚线 / 不同颜色绘制" —— 这些是几何/样式信号，文本里看不到。
-- **结构关系**："案例卡用虚线回连到推荐路径"、"主决策树第一层并列分叉"、"三层架构横向贯穿主图" —— 是节点之间的连接和层级关系，光看文字看不出连线指向哪。
-- **视觉感受**："信息密度合理"、"贴墙扫读友好"、"一眼能识别"、"短句呈现" —— 主观体感，没有客观文本指标。
-- **依据 / 来源**："风险优先级梯依据《独居老人家庭安全隐患与事故统计》制作" —— 哪份附件支撑哪段结论，文本里通常不会带『依据』标签，需要交叉比对。
-- **打分制软约束**：rubric 是 0/1/2/3/4 分而不是二元 0/1 的，本质是评分员主观尺度，脚本顶多做兜底（"≥ 0 分"），分不出 3 和 4。
-
-简单识别：rubric 里出现 "**位置 / 颜色 / 线型 / 形状 / 分区 / 排版 / 醒目 / 视觉**" 这些词，或者它在数据里 `visual_depend` 标了 `是` —— 大概率不要硬塞脚本里。
+> 脚本化只是把可机判的部分搬出去，剩下需要人判的部分仍然要保留人判，两条路线互为补充——以脚本结果替代整体评分会漏掉真正决定产物质量的视觉/结构问题。
 
 ## 写一个校验脚本
 
-> **想直接起步**：[`checks/example/`](checks/example/) 下面的 6 个模板覆盖了上一节列出的所有"推荐"模式（白/黑名单后缀、all-of、any-of、禁词、数量阈值、数值范围）。复制一份、改 docstring 顶部的 `REQUIRED` / `BLOCKED` / `FORBIDDEN` / `MIN_COUNT` 等常量，就能成为你自己的 check。
+> **想直接起步**：[`checks/example/`](checks/example/) 下面的 6 个模板覆盖了上一节列出的常见模式。复制一份、改 docstring 顶部的 `REQUIRED` / `BLOCKED` / `FORBIDDEN` / `MIN_COUNT` 等常量，就能成为你自己的 check。
 
 校验脚本通过继承 `Checker` 基类来定义。`Checker` 上有两个方法，按检查类型**二选一**改写：
 
