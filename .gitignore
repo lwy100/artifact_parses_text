@@ -223,3 +223,4 @@ artifact_validation_data/*
 checks/*
 !checks/example
 
+check_result/*

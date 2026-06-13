@@ -31,11 +31,16 @@ pip install -e .
 # 只解析，不检查 → 跟附件同目录写出 <basename>.md
 python3 parse_and_check.py --file artifact_validation_data/word/foo.docx
 
+
 # 解析 + 一项检查 → 同时在 check_result/ 落一个时间戳前缀的 report，stdout 打印汇总
 python3 parse_and_check.py --file foo.docx --script checks/example/check_all_keywords_present.py
 
 # --script 也可以是一个目录：里面顶层所有 check_*.py 会按文件名升序依次跑
 python3 parse_and_check.py --file foo.docx --script checks/example
+# example:
+uv run parse_and_check.py --file artifact_validation_data/example/excel.xlsx --script checks/excel_test
+# 检查结果 见 ./check_result
+
 ```
 
 ### CLI
