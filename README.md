@@ -65,7 +65,7 @@ python3 parse_and_check.py --file foo.docx --script checks/example
 
 ## 哪些 rubric 适合做成脚本？
 
-一句话判断：**这条 rubric 的判定，能不能在解析后的纯文本（或文件名）里逐字对上？** 能就适合脚本化，不能就留给人或视觉模型。
+一句话判断：**这条 rubric 的判定，能不能在解析后的纯文本（或文件名）里逐字对上？** 能就适合脚本化，不能就保留rubric交给模型。
 
 常见可脚本化的 rubric 形态（每种都有现成模板可抄）：
 
@@ -78,11 +78,9 @@ python3 parse_and_check.py --file foo.docx --script checks/example
 | 数量阈值（≥ N 个标题、关键词出现 ≥ N 次等） | [`checks/example/check_min_count.py`](checks/example/check_min_count.py) |
 | 数值范围 / 异常值 | [`checks/example/check_number_range.py`](checks/example/check_number_range.py) |
 
-涉及视觉信号的 rubric 不适合脚本化——版式、颜色、线型、坐标位置、嵌套关系、视觉感受、主观打分，这些 parse 后看不到，**别强行写**。如果 rubric 数据里 `visual_depend: 是`，基本就是这种。
+涉及视觉信号的 rubric 不适合脚本化——版式、颜色、线型、坐标位置、嵌套关系、视觉感受、主观打分，这些 parse 后看不到，**别强行写**。
 
-> 端到端示例：[`checks/rubric_baoyu_diagram_7641/`](checks/rubric_baoyu_diagram_7641/) 从一条海报类 task 的 rubric 里挑了 10 条改写成 check_*.py，可直接 `python3 parse_and_check.py --file <候选海报> --script checks/rubric_baoyu_diagram_7641` 一次性跑完。
-
-> 脚本化只是把可机判的部分搬出去，剩下需要人判的部分仍然要保留人判，两条路线互为补充——以脚本结果替代整体评分会漏掉真正决定产物质量的视觉/结构问题。
+> 脚本化只是把可机判的部分搬出去，剩下需要模型判的部分仍然要保留给模型判，两条路线互为补充——以脚本结果替代整体评分会漏掉真正决定产物质量的视觉/结构问题。
 
 ## 写一个校验脚本
 
@@ -96,6 +94,21 @@ python3 parse_and_check.py --file foo.docx --script checks/example
 | `check_content(text, meta)` | 解析后正文检查 | 解析文本 + meta |
 
 每个 `--script` 文件**只放一个**具体的 `Checker` 子类，命名随意（`MyChecker`、`HasTitleChecker` 都行）；运行器按"在该文件里直接定义、且不是基类本身"挑出唯一一个，自动实例化并调用对应方法。同时改写两个方法会被加载器拒绝。
+
+### `meta` 里有什么
+
+两个方法都会收到一个 `meta` dict，固定四个字段，由主脚本根据 `--file` 直接生成：
+
+| key | 类型 | 含义 | 例 |
+| --- | --- | --- | --- |
+| `file_path` | str | 传给 `--file` 的原始路径（可能是相对路径，看你怎么调的） | `"artifact_validation_data/word/foo.docx"` |
+| `file_name` | str | 文件名（含后缀，不含目录） | `"foo.docx"` |
+| `ext` | str | 文件后缀（**带点、已小写**），用来做后缀分支判断 | `".docx"` |
+| `size_bytes` | int | 文件字节数 | `61154` |
+
+`check_filename(file_name, meta)` 收到的第一个参数 `file_name` 就是 `meta["file_name"]` 的快捷别名，方便最常见的"只看文件名"场景。需要看后缀就读 `meta["ext"]`，需要看体积就读 `meta["size_bytes"]`。
+
+`check_content(text, meta)` 里 `text` 是解析后的纯文本，`meta` 同上——常见用法是在 `detail` 里把 `meta["file_name"]` 拼进去，方便定位到底是哪个附件 fail 了。
 
 ### 内容检查（最常见）
 
@@ -139,7 +152,7 @@ class IdPrefixChecker(Checker):
 - 抛异常 / 返回不是 dict / 缺 `ok` → 该项记为 `error`，整体退出码 1。
 - 同一文件里出现 ≥2 个 `Checker` 子类、或者一个 `Checker` 子类同时改写了 `check_filename` 和 `check_content`，都会被运行器拒绝（避免歧义），请拆成多个 `--script`。
 
-向后兼容：旧的纯函数式 `def check(text, meta) -> dict` 仍然能用，但新写法推荐继承 `Checker`。
+
 
 ## 解析格式速览
 
