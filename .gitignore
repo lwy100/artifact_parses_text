@@ -222,6 +222,8 @@ artifact_validation_data/*
 
 checks/*
 !checks/example
+!checks/excel_test
 
+# check result
 check_result/*
 !check_result/example.json
