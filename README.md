@@ -1,6 +1,6 @@
 # artifact_parses_text
 
-把文件类型的产物（xlsx / docx / pdf / pptx / html / md）解析成文本，并可选地用「校验脚本」检查解析后的文本是否符合预期。
+把文件类型的产物（xlsx / docx / pdf / pptx / html / md）解析成文本，并可选地用「校验脚本」检查解析后的文本是否符合预期，主要用于把固定类型的rubric改造成检测脚本。
 
 ## 安装
 
