@@ -224,3 +224,4 @@ checks/*
 !checks/example
 
 check_result/*
+!check_result/example.json
