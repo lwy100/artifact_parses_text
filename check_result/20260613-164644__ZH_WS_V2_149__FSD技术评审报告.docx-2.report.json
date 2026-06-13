@@ -1,0 +1,52 @@
+{
+  "file": {
+    "file_path": "artifact_validation_data/word/ZH_WS_V2_149__FSD技术评审报告.docx",
+    "file_name": "ZH_WS_V2_149__FSD技术评审报告.docx",
+    "ext": ".docx",
+    "size_bytes": 61154
+  },
+  "out": "/home/tiger/.claude/jobs/8c782999/tmp/final2.md",
+  "summary": {
+    "pass": 4,
+    "fail": 2,
+    "err": 0
+  },
+  "checks": [
+    {
+      "name": "all-keywords-present",
+      "status": "fail",
+      "detail": "缺少：['基础看护', '标准安防', '全面守护']",
+      "script": "checks/example/check_all_keywords_present.py"
+    },
+    {
+      "name": "any-keyword-present",
+      "status": "ok",
+      "detail": "命中『结论』",
+      "script": "checks/example/check_any_keyword_present.py"
+    },
+    {
+      "name": "ext-policy",
+      "status": "ok",
+      "detail": "ZH_WS_V2_149__FSD技术评审报告.docx",
+      "script": "checks/example/check_extension_policy.py"
+    },
+    {
+      "name": "forbidden-keywords",
+      "status": "ok",
+      "detail": "无禁词出现：['TBD', 'TODO', '待定', '占位']",
+      "script": "checks/example/check_forbidden_keywords.py"
+    },
+    {
+      "name": "min-heading-count",
+      "status": "ok",
+      "detail": "标题行 23 个，达标",
+      "script": "checks/example/check_min_count.py"
+    },
+    {
+      "name": "no-negative-numbers",
+      "status": "fail",
+      "detail": "出现负值（前几个）：['-020', '-002', '-031', '-012']",
+      "script": "checks/example/check_number_range.py"
+    }
+  ]
+}

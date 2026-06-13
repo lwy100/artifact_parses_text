@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+artifact_validation_data/*
+!artifact_validation_data/example
